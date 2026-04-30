@@ -1,0 +1,35 @@
+# Auto detect text files and normalize line endings
+* text=auto
+
+# Source code files - Unix line endings (LF)
+*.ts text eol=lf
+*.js text eol=lf
+*.vue text eol=lf
+*.py text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.scss text eol=lf
+*.tsx text eol=lf
+*.jsx text eol=lf
+*.toml text eol=lf
+
+# Windows batch and PowerShell scripts
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary files - no conversion
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.svg binary
+*.ico binary
+*.db binary
+*.sqlite binary
+*.sqlite3 binary
+*.lock binary
