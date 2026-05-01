@@ -10,7 +10,8 @@ build/
 venv/
 env/
 
-# Environment
+# Environment — only actual .env files are ignored
+# .env.example files ARE committed (they are templates)
 .env
 .env.local
 .env.*.local
@@ -33,8 +34,7 @@ Thumbs.db
 # Logs
 *.log
 
-# uv
-uv.lock
+# NOTE: uv.lock is NOT ignored — it must be committed for reproducible builds
 
 # MinIO data
 minio-data/
