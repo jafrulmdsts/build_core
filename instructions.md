@@ -85,3 +85,37 @@
 ## Audit Trail
 - Only `audit_logs` table is partitioned (year-wise by `created_at`).
 - Track: who, what, when, where (IP), old/new values.
+
+---
+
+## Development Environment — SSH & Git Push
+
+### SSH Key Info (DO NOT LOSE)
+This environment has **no native `ssh` binary**. Git push uses a Python `asyncssh` wrapper.
+
+- **Private Key**: `/home/z/.ssh/id_ed25519`
+- **Public Key**: `/home/z/.ssh/id_ed25519.pub`
+- **SSH Wrapper Script**: `/home/z/.ssh/ssh_wrapper.py`
+- **Key Type**: ED25519
+- **Comment**: `buildcore@dev.bot`
+
+### Public Key (already added to GitHub):
+```
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICS7srfYlTaA83VVeUu1SRTX9DeSn0oWOmzZiUeUz4jm buildcore@dev.bot
+```
+
+### How to Push:
+```bash
+GIT_SSH_COMMAND="python3 /home/z/.ssh/ssh_wrapper.py" git -C /home/z/build_core push origin main
+```
+
+### If Key Stops Working:
+1. Generate new key: `python3 -c "import asyncio,asyncssh,os; ... (see ssh_wrapper.py)"`
+2. Add new public key to GitHub → Settings → Deploy Keys → Allow write access
+3. Update instructions.md with new public key
+4. **NEVER use HTTPS push** — no credential helper available in this environment
+
+### Git Remote:
+```
+origin  git@github.com:jafrulmdsts/build_core.git
+```
