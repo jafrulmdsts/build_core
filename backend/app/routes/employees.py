@@ -46,7 +46,7 @@ async def list_employees_endpoint(
         return error_response(exc)
 
 
-@router.post("/")
+@router.post("/", status_code=201)
 async def create_employee_endpoint(
     body: EmployeeCreate,
     db=Depends(get_db_session),
@@ -57,7 +57,7 @@ async def create_employee_endpoint(
         org_id = current_user.get("organization_id")
         user_id = current_user.get("sub")
         emp = await svc_create_employee(db, org_id=org_id, data=body, created_by=user_id)
-        return success_response(data=emp, message="Employee created", meta={"status_code": 201})
+        return success_response(data=emp, message="Employee created")
     except BuildCoreError as exc:
         return error_response(exc)
 

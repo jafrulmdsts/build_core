@@ -65,7 +65,7 @@ async def list_contractors_endpoint(
         return error_response(exc)
 
 
-@router.post("/")
+@router.post("/", status_code=201)
 async def create_contractor_endpoint(
     body: ContractorCreate,
     db=Depends(get_db_session),
@@ -76,7 +76,7 @@ async def create_contractor_endpoint(
         org_id = current_user.get("organization_id")
         user_id = current_user.get("sub")
         ctr = await svc_create_contractor(db, org_id=org_id, data=body, created_by=user_id)
-        return success_response(data=ctr, message="Contractor created", meta={"status_code": 201})
+        return success_response(data=ctr, message="Contractor created")
     except BuildCoreError as exc:
         return error_response(exc)
 
@@ -161,7 +161,7 @@ async def list_contracts_endpoint(
         return error_response(exc)
 
 
-@router.post("/{ctr_id}/contracts")
+@router.post("/{ctr_id}/contracts", status_code=201)
 async def create_contract_endpoint(
     ctr_id: str,
     body: ContractCreate,
@@ -176,7 +176,7 @@ async def create_contract_endpoint(
             db, org_id=org_id, contractor_id=ctr_id, data=body, created_by=user_id
         )
         return success_response(
-            data=contract, message="Contract created", meta={"status_code": 201}
+            data=contract, message="Contract created"
         )
     except BuildCoreError as exc:
         return error_response(exc)
@@ -245,7 +245,7 @@ async def list_payments_endpoint(
         return error_response(exc)
 
 
-@router.post("/contracts/{contract_id}/payments")
+@router.post("/contracts/{contract_id}/payments", status_code=201)
 async def create_payment_endpoint(
     contract_id: str,
     body: PaymentCreate,
@@ -260,7 +260,7 @@ async def create_payment_endpoint(
             db, org_id=org_id, contract_id=contract_id, data=body, created_by=user_id
         )
         return success_response(
-            data=payment, message="Payment created", meta={"status_code": 201}
+            data=payment, message="Payment created"
         )
     except BuildCoreError as exc:
         return error_response(exc)

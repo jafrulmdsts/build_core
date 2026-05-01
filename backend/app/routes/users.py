@@ -11,7 +11,7 @@ from app.core.exceptions import BuildCoreError
 from app.core.pagination import get_pagination_params, compute_offset
 from app.core.responses import error_response, paginated_response, success_response
 from app.core.dependencies import get_current_user, require_super_admin, require_tenant, get_db_session
-from app.schemas.user import UserUpdate
+from app.schemas.user import UserUpdate, SuperAdminCreateUserRequest
 from app.services.user.service import (
     get_user,
     list_users,
@@ -20,6 +20,7 @@ from app.services.user.service import (
     activate_user,
     delete_user,
 )
+from app.services.auth.crud import get_user_by_email
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -43,6 +44,53 @@ async def list_users_endpoint(
             per_page=pagination.per_page,
             total=total,
             message="Users retrieved",
+        )
+    except BuildCoreError as exc:
+        return error_response(exc)
+
+
+@router.post("/create")
+async def create_user_endpoint(
+    body: SuperAdminCreateUserRequest,
+    db=Depends(get_db_session),
+    current_user: dict = Depends(require_super_admin),
+):
+    """Create a user for any organization (super admin only).
+
+    Super admin can create active users with a password directly,
+    or create users who will need to set their password later.
+    """
+    try:
+        from app.core.exceptions import ConflictError
+        from app.services.auth.crud import create_user
+        from app.core.security import get_password_hash
+        from datetime import datetime, timezone
+
+        # Check email uniqueness
+        existing = await get_user_by_email(db, body.email)
+        if existing is not None:
+            raise ConflictError(
+                message="A user with this email already exists",
+                details={"email": body.email},
+            )
+
+        user = await create_user(
+            db,
+            organization_id=body.organization_id,
+            email=body.email,
+            password_hash=get_password_hash(body.password),
+            first_name=body.first_name,
+            last_name=body.last_name,
+            phone=body.phone,
+            role_id=body.role_id,
+            is_active=body.is_active,
+            email_verified_at=datetime.now(timezone.utc) if body.is_active else None,
+            invited_by=current_user.get("sub"),
+        )
+
+        return success_response(
+            data={"id": user.id, "email": user.email, "is_active": user.is_active},
+            message="User created successfully",
         )
     except BuildCoreError as exc:
         return error_response(exc)

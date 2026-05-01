@@ -6,13 +6,14 @@ import { useAuthStore } from '@/features/auth/store';
 import {
   Users, UserPlus, Search, Edit, Trash2, X, Mail, Phone,
   ChevronLeft, ChevronRight, Loader2, Shield, Copy, Check,
-  UserRound, EyeOff, Eye,
+  UserRound, EyeOff, Eye, Lock, Building2,
 } from '@lucide/vue';
 
 const { t } = useI18n();
 const authStore = useAuthStore();
 
 interface Role { id: string; name: string; }
+interface OrgItem { id: string; name: string; slug: string; }
 interface UserItem {
   id: string; email: string; first_name: string; last_name: string;
   phone: string; avatar_url: string | null; role_id: string;
@@ -23,6 +24,7 @@ interface PaginationMeta { page: number; per_page: number; total: number; total_
 
 const users = ref<UserItem[]>([]);
 const roles = ref<Role[]>([]);
+const organizations = ref<OrgItem[]>([]);
 const loading = ref(true);
 const saving = ref(false);
 const searchQuery = ref('');
@@ -33,6 +35,7 @@ const errorMessage = ref('');
 
 // Modals
 const showInviteModal = ref(false);
+const showCreateUserModal = ref(false);
 const showEditModal = ref(false);
 const showDeleteDialog = ref(false);
 const inviteLink = ref('');
@@ -45,6 +48,14 @@ const selectedUser = ref<UserItem | null>(null);
 // Invite form
 const inviteForm = reactive({ email: '', first_name: '', last_name: '', phone: '', role_id: '' });
 const editForm = reactive({ first_name: '', last_name: '', phone: '', email: '', role_id: '' });
+
+// Superadmin create user form
+const createUserForm = reactive({
+  organization_id: '', email: '', first_name: '', last_name: '',
+  password: '', phone: '', role_id: '', is_active: true,
+});
+
+const isSuperAdminNoOrg = computed(() => authStore.isSuperAdmin && !authStore.hasOrganization);
 
 async function fetchUsers() {
   loading.value = true;
@@ -67,6 +78,22 @@ async function fetchRoles() {
   } catch { /* roles dropdown is optional */ }
 }
 
+async function fetchRolesForOrg(orgId: string) {
+  if (!orgId) { roles.value = []; return; }
+  try {
+    const { data } = await api.get('/roles', { params: { organization_id: orgId } });
+    roles.value = data.data || [];
+  } catch { roles.value = []; }
+}
+
+async function fetchOrganizations() {
+  if (!authStore.isSuperAdmin) return;
+  try {
+    const { data } = await api.get('/organizations', { params: { page: 1, per_page: 100 } });
+    organizations.value = (data.data || []).map((o: any) => ({ id: o.id, name: o.name, slug: o.slug }));
+  } catch { /* optional */ }
+}
+
 async function inviteUser() {
   if (!inviteForm.email.trim() || !inviteForm.first_name.trim()) return;
   saving.value = true;
@@ -82,6 +109,28 @@ async function inviteUser() {
     await fetchUsers();
   } catch (err: any) {
     errorMessage.value = err.response?.data?.error?.message || 'Failed to send invitation.';
+  } finally { saving.value = false; }
+}
+
+async function createSuperAdminUser() {
+  if (!createUserForm.organization_id || !createUserForm.email.trim() || !createUserForm.first_name.trim() || !createUserForm.password) return;
+  saving.value = true;
+  errorMessage.value = '';
+  try {
+    await api.post('/users/create', {
+      organization_id: createUserForm.organization_id,
+      email: createUserForm.email.trim(),
+      first_name: createUserForm.first_name.trim(),
+      last_name: createUserForm.last_name.trim(),
+      password: createUserForm.password,
+      phone: createUserForm.phone.trim() || undefined,
+      role_id: createUserForm.role_id || undefined,
+      is_active: createUserForm.is_active,
+    });
+    closeCreateUserModal();
+    await fetchUsers();
+  } catch (err: any) {
+    errorMessage.value = err.response?.data?.error?.message || 'Failed to create user.';
   } finally { saving.value = false; }
 }
 
@@ -147,6 +196,16 @@ function openInviteModal() {
   fetchRoles();
 }
 
+function openCreateUserModal() {
+  Object.assign(createUserForm, {
+    organization_id: '', email: '', first_name: '', last_name: '',
+    password: '', phone: '', role_id: '', is_active: true,
+  });
+  errorMessage.value = '';
+  roles.value = [];
+  showCreateUserModal.value = true;
+}
+
 function openEditModal(user: UserItem) {
   selectedUser.value = user;
   Object.assign(editForm, {
@@ -161,6 +220,7 @@ function openEditModal(user: UserItem) {
 function confirmDelete(user: UserItem) { selectedUser.value = user; showDeleteDialog.value = true; }
 function closeInviteModal() { showInviteModal.value = false; inviteLink.value = ''; errorMessage.value = ''; }
 function closeEditModal() { showEditModal.value = false; selectedUser.value = null; errorMessage.value = ''; }
+function closeCreateUserModal() { showCreateUserModal.value = false; errorMessage.value = ''; }
 
 async function copyInviteLink() {
   try {
@@ -193,8 +253,19 @@ const pageNumbers = computed(() => {
 const inputCls = 'block w-full rounded-lg border border-slate-300 bg-white py-2.5 px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20';
 const inputIconCls = inputCls.replace(' px-3', ' pl-10 pr-3');
 
+// When superadmin selects an org in create-user modal, fetch roles for that org
+watch(() => createUserForm.organization_id, (orgId) => {
+  if (orgId) fetchRolesForOrg(orgId);
+});
+
 watch(currentPage, () => fetchUsers());
-onMounted(() => { fetchUsers(); fetchRoles(); });
+onMounted(() => {
+  if (!isSuperAdminNoOrg.value) {
+    fetchUsers();
+    fetchRoles();
+  }
+  if (authStore.isSuperAdmin) fetchOrganizations();
+});
 </script>
 
 <template>
@@ -205,19 +276,36 @@ onMounted(() => { fetchUsers(); fetchRoles(); });
         <h2 class="text-2xl font-bold text-slate-900">ব্যবহারকারী / Users</h2>
         <p class="mt-1 text-sm text-slate-500">Manage user accounts and invitations.</p>
       </div>
-      <button @click="openInviteModal" class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 cursor-pointer">
-        <UserPlus :size="18" /> আমন্ত্রণ করুন / Invite User
-      </button>
+      <div class="flex items-center gap-2">
+        <!-- Superadmin: Create User directly -->
+        <button v-if="authStore.isSuperAdmin" @click="openCreateUserModal" class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 cursor-pointer">
+          <UserPlus :size="18" /> ব্যবহারকারী তৈরি করুন / Create User
+        </button>
+        <!-- Tenant user: Invite User -->
+        <button v-if="!isSuperAdminNoOrg" @click="openInviteModal" class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 cursor-pointer">
+          <UserPlus :size="18" /> আমন্ত্রণ করুন / Invite User
+        </button>
+      </div>
+    </div>
+
+    <!-- SuperAdmin No Org Notice -->
+    <div v-if="isSuperAdminNoOrg" class="rounded-xl bg-amber-50 border border-amber-200 p-6 text-center">
+      <Building2 :size="40" class="text-amber-400 mx-auto mb-3" />
+      <h3 class="text-lg font-semibold text-slate-900">No Organization Selected</h3>
+      <p class="mt-2 text-sm text-slate-500 max-w-md mx-auto">
+        As a Super Admin, you need to select or create an organization first to manage its users.
+        Go to <router-link to="/organizations" class="text-emerald-600 font-medium hover:underline">Organizations</router-link> to create one, or use "Create User" to add users directly.
+      </p>
     </div>
 
     <!-- Error Banner -->
-    <div v-if="errorMessage" class="rounded-lg bg-red-50 border border-red-200 px-4 py-3 flex items-center gap-2">
+    <div v-if="errorMessage && !showInviteModal && !showCreateUserModal && !showEditModal" class="rounded-lg bg-red-50 border border-red-200 px-4 py-3 flex items-center gap-2">
       <span class="text-sm text-red-700 flex-1">{{ errorMessage }}</span>
       <button @click="errorMessage = ''" class="text-red-500 hover:text-red-700 cursor-pointer"><X :size="16" /></button>
     </div>
 
     <!-- Search -->
-    <div class="relative">
+    <div v-if="!isSuperAdminNoOrg" class="relative">
       <Search :size="18" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
       <input v-model="searchQuery" type="text" placeholder="Search by name or email…" class="block w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20" />
     </div>
@@ -231,13 +319,18 @@ onMounted(() => { fetchUsers(); fetchRoles(); });
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="users.length === 0" class="flex flex-col items-center justify-center py-20 rounded-xl bg-white border border-slate-200/80 shadow-sm">
+    <div v-else-if="users.length === 0 && !isSuperAdminNoOrg" class="flex flex-col items-center justify-center py-20 rounded-xl bg-white border border-slate-200/80 shadow-sm">
       <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4"><Users :size="32" class="text-slate-400" /></div>
       <h3 class="text-lg font-semibold text-slate-900">No users found</h3>
       <p class="mt-1 text-sm text-slate-500 max-w-sm text-center">Get started by inviting your first team member.</p>
-      <button @click="openInviteModal" class="mt-4 inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-700 cursor-pointer">
-        <UserPlus :size="16" /> আমন্ত্রণ করুন / Invite
-      </button>
+      <div class="mt-4 flex items-center gap-2">
+        <button v-if="authStore.isSuperAdmin" @click="openCreateUserModal" class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-700 cursor-pointer">
+          <UserPlus :size="16" /> Create User
+        </button>
+        <button @click="openInviteModal" class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-700 cursor-pointer">
+          <UserPlus :size="16" /> Invite
+        </button>
+      </div>
     </div>
 
     <!-- No Search Results -->
@@ -247,7 +340,7 @@ onMounted(() => { fetchUsers(); fetchRoles(); });
     </div>
 
     <!-- Data Display -->
-    <template v-else>
+    <template v-else-if="users.length > 0">
       <!-- Table (Desktop) -->
       <div class="hidden md:block rounded-xl bg-white border border-slate-200/80 shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
@@ -419,6 +512,78 @@ onMounted(() => { fetchUsers(); fetchRoles(); });
               <button type="button" @click="closeInviteModal" class="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer">Cancel</button>
               <button type="submit" :disabled="saving" class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer">
                 <Loader2 v-if="saving" :size="16" class="animate-spin" />Send Invitation
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Create User Modal (Superadmin) -->
+    <Teleport to="body">
+      <div v-if="showCreateUserModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="closeCreateUserModal"></div>
+        <div class="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">
+          <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4 sticky top-0 bg-white rounded-t-2xl z-10">
+            <h3 class="text-lg font-semibold text-slate-900">ব্যবহারকারী তৈরি করুন / Create User</h3>
+            <button @click="closeCreateUserModal" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer"><X :size="20" /></button>
+          </div>
+          <form @submit.prevent="createSuperAdminUser" class="p-6 space-y-4">
+            <div v-if="errorMessage" class="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{{ errorMessage }}</div>
+            <!-- Organization -->
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Organization <span class="text-red-500">*</span></label>
+              <div class="relative">
+                <Building2 :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <select v-model="createUserForm.organization_id" required :class="inputIconCls + ' cursor-pointer'">
+                  <option value="">— Select Organization —</option>
+                  <option v-for="org in organizations" :key="org.id" :value="org.id">{{ org.name }} ({{ org.slug }})</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Email <span class="text-red-500">*</span></label>
+                <div class="relative"><Mail :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input v-model="createUserForm.email" type="email" required placeholder="user@example.com" :class="inputIconCls" /></div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Password <span class="text-red-500">*</span></label>
+                <div class="relative"><Lock :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input v-model="createUserForm.password" type="password" required placeholder="Min 8 characters" minlength="8" :class="inputIconCls" /></div>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">First Name <span class="text-red-500">*</span></label>
+                <div class="relative"><UserRound :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input v-model="createUserForm.first_name" type="text" required placeholder="John" :class="inputIconCls" /></div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Last Name</label>
+                <input v-model="createUserForm.last_name" type="text" placeholder="Doe" :class="inputCls" />
+              </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Phone</label>
+                <div class="relative"><Phone :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input v-model="createUserForm.phone" type="tel" placeholder="+880 1XXX-XXXXXX" :class="inputIconCls" /></div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Role</label>
+                <select v-model="createUserForm.role_id" :class="inputCls + ' cursor-pointer'">
+                  <option value="">— Select Role —</option>
+                  <option v-for="role in roles" :key="role.id" :value="role.id">{{ role.name }}</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input v-model="createUserForm.is_active" type="checkbox" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 h-4 w-4" />
+                <span class="text-sm text-slate-700">Account active immediately</span>
+              </label>
+            </div>
+            <div class="flex items-center justify-end gap-3 pt-2">
+              <button type="button" @click="closeCreateUserModal" class="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer">Cancel</button>
+              <button type="submit" :disabled="saving" class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer">
+                <Loader2 v-if="saving" :size="16" class="animate-spin" />Create User
               </button>
             </div>
           </form>

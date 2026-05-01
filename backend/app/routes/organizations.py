@@ -43,7 +43,7 @@ async def list_organizations_endpoint(
         return error_response(exc)
 
 
-@router.post("/")
+@router.post("/", status_code=201)
 async def create_organization_endpoint(
     body: OrganizationCreate,
     db=Depends(get_db_session),
@@ -52,7 +52,7 @@ async def create_organization_endpoint(
     """Create a new organization (super admin only)."""
     try:
         org = await create_organization(db, body)
-        return success_response(data=org, message="Organization created", status_code=201)
+        return success_response(data=org, message="Organization created")
     except BuildCoreError as exc:
         return error_response(exc)
 

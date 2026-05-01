@@ -5,16 +5,25 @@ import api from '@/lib/api';
 import {
   Building2, Plus, Search, Edit, Trash2, X,
   ChevronLeft, ChevronRight, Loader2, EyeOff, Eye,
-  Phone, Mail, Link, Hash,
+  Phone, Mail, Link, Hash, CreditCard,
 } from '@lucide/vue';
+import { useAuthStore } from '@/features/auth/store';
 
-useI18n();
+const { t } = useI18n();
+const authStore = useAuthStore();
 
 interface Organization {
   id: number; name: string; slug: string; address: string | null;
   phone: string | null; email: string | null; website: string | null;
   reg_number: string | null; is_active: boolean; currency_code: string;
   timezone: string; created_at: string; logo_url?: string;
+  subscription_plan_id?: string | null; subscription_start_date?: string | null;
+  subscription_end_date?: string | null; max_users?: number | null; max_projects?: number | null;
+}
+
+interface SubPlan {
+  id: string; name: string; slug: string; price_monthly: number;
+  max_users: number; max_projects: number; is_active: boolean;
 }
 
 interface PaginationMeta { page: number; per_page: number; total: number; total_pages: number; }
@@ -31,12 +40,21 @@ const showDeleteDialog = ref(false);
 const isEditing = ref(false);
 const selectedOrg = ref<Organization | null>(null);
 const errorMessage = ref('');
+const subscriptionPlans = ref<SubPlan[]>([]);
 
 const defaultForm = {
   name: '', slug: '', address: '', phone: '', email: '',
   website: '', reg_number: '', currency_code: 'BDT', timezone: 'Asia/Dhaka',
+  subscription_plan_id: '',
 };
 const form = reactive({ ...defaultForm });
+
+async function fetchSubscriptionPlans() {
+  try {
+    const { data } = await api.get('/subscriptions');
+    subscriptionPlans.value = (data.data || []).filter((p: SubPlan) => p.is_active);
+  } catch { /* optional */ }
+}
 
 async function fetchOrganizations() {
   loading.value = true;
@@ -65,6 +83,7 @@ async function saveOrganization() {
       email: form.email.trim() || null, website: form.website.trim() || null,
       reg_number: form.reg_number.trim() || null,
       currency_code: form.currency_code, timezone: form.timezone,
+      subscription_plan_id: form.subscription_plan_id || null,
     };
     if (isEditing.value && selectedOrg.value) {
       await api.put(`/organizations/${selectedOrg.value.id}`, payload);
@@ -117,6 +136,7 @@ function openEditModal(org: Organization) {
     phone: org.phone || '', email: org.email || '', website: org.website || '',
     reg_number: org.reg_number || '', currency_code: org.currency_code || 'BDT',
     timezone: org.timezone || 'Asia/Dhaka',
+    subscription_plan_id: org.subscription_plan_id || '',
   });
   errorMessage.value = '';
   showFormModal.value = true;
@@ -154,7 +174,7 @@ const inputCls = 'block w-full rounded-lg border border-slate-300 bg-white py-2.
 const inputIconCls = inputCls.replace(' px-3', ' pl-10 pr-3');
 
 watch(currentPage, () => fetchOrganizations());
-onMounted(fetchOrganizations);
+onMounted(() => { fetchOrganizations(); fetchSubscriptionPlans(); });
 </script>
 
 <template>
@@ -219,6 +239,7 @@ onMounted(fetchOrganizations);
                 <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Email</th>
                 <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Phone</th>
                 <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Plan</th>
                 <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Reg #</th>
                 <th class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Created</th>
                 <th class="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
@@ -240,6 +261,12 @@ onMounted(fetchOrganizations);
                     <span :class="['w-1.5 h-1.5 rounded-full', org.is_active ? 'bg-emerald-500' : 'bg-slate-400']"></span>
                     {{ org.is_active ? 'Active' : 'Inactive' }}
                   </span>
+                </td>
+                <td class="px-6 py-4 text-sm text-slate-500">
+                  <span v-if="org.subscription_end_date" :class="['inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium', new Date(org.subscription_end_date) > new Date() ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600']">
+                    {{ new Date(org.subscription_end_date) > new Date() ? 'Active' : 'Expired' }}
+                  </span>
+                  <span v-else class="text-xs text-slate-400">—</span>
                 </td>
                 <td class="px-6 py-4 text-sm text-slate-500">{{ org.reg_number || '—' }}</td>
                 <td class="px-6 py-4 text-sm text-slate-500">{{ formatDate(org.created_at) }}</td>
@@ -360,6 +387,16 @@ onMounted(fetchOrganizations);
                 <label class="block text-sm font-medium text-slate-700 mb-1">Timezone</label>
                 <select v-model="form.timezone" :class="inputCls + ' cursor-pointer'">
                   <option value="Asia/Dhaka">Asia/Dhaka (BST +6)</option><option value="Asia/Kolkata">Asia/Kolkata (IST +5:30)</option><option value="UTC">UTC</option><option value="America/New_York">America/New_York</option><option value="Europe/London">Europe/London</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Subscription Plan</label>
+              <div class="relative">
+                <CreditCard :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <select v-model="form.subscription_plan_id" :class="inputIconCls + ' cursor-pointer'">
+                  <option value="">— No Plan —</option>
+                  <option v-for="plan in subscriptionPlans" :key="plan.id" :value="plan.id">{{ plan.name }} (${{ plan.price_monthly }}/mo — {{ plan.max_users }} users, {{ plan.max_projects || '∞' }} projects)</option>
                 </select>
               </div>
             </div>

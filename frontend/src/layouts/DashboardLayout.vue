@@ -35,6 +35,9 @@ const notificationOpen = ref(false);
 
 const isBangla = computed(() => locale.value === 'bn');
 
+// Super admin without an organization should only see super-admin scoped menus
+const isSuperAdminNoOrg = computed(() => authStore.isSuperAdmin && !authStore.hasOrganization);
+
 function toggleLanguage() {
   locale.value = isBangla.value ? 'en' : 'bn';
 }
@@ -71,9 +74,22 @@ interface MenuItem {
   path: string;
   icon: any;
   superAdminOnly?: boolean;
+  requiresTenant?: boolean;
 }
 
 const menuItems = computed<MenuItem[]>(() => {
+  // Super admin without org: only show super-admin scoped items
+  if (isSuperAdminNoOrg.value) {
+    return [
+      { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+      { name: 'Organizations', path: '/organizations', icon: Building2, superAdminOnly: true },
+      { name: 'Subscriptions', path: '/subscriptions', icon: CreditCard, superAdminOnly: true },
+      { name: 'Currencies', path: '/currencies', icon: Coins, superAdminOnly: true },
+      { name: 'Settings', path: '/settings', icon: Settings },
+    ];
+  }
+
+  // Normal user or super admin with org: show all tenant-scoped items
   const items: MenuItem[] = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Projects', path: '/projects', icon: HardHat },

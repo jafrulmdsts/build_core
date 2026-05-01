@@ -49,7 +49,7 @@ async def list_roles_endpoint(
         return error_response(exc)
 
 
-@router.post("/")
+@router.post("/", status_code=201)
 async def create_role_endpoint(
     body: RoleCreate,
     db=Depends(get_db_session),
@@ -59,7 +59,7 @@ async def create_role_endpoint(
     try:
         organization_id = current_user.get("organization_id")
         role = await create_role(db, organization_id, body)
-        return success_response(data=role, message="Role created", status_code=201)
+        return success_response(data=role, message="Role created")
     except BuildCoreError as exc:
         return error_response(exc)
 
@@ -107,7 +107,7 @@ async def delete_role_endpoint(
         return error_response(exc)
 
 
-@router.post("/permissions/override")
+@router.post("/permissions/override", status_code=201)
 async def create_permission_override_endpoint(
     body: PermissionOverrideCreate,
     db=Depends(get_db_session),
@@ -121,7 +121,7 @@ async def create_permission_override_endpoint(
     try:
         override = await create_permission_override(db, body, current_user)
         return success_response(
-            data=override, message="Permission override created", status_code=201,
+            data=override, message="Permission override created"
         )
     except BuildCoreError as exc:
         return error_response(exc)

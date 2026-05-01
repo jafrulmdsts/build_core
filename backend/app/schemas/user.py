@@ -19,6 +19,19 @@ class UserUpdate(BaseModel):
     is_active: bool | None = None
 
 
+class SuperAdminCreateUserRequest(BaseModel):
+    """Payload for super admin creating a user for any organization."""
+
+    organization_id: str = Field(..., description="Target organization ID")
+    email: EmailStr = Field(..., description="User email address")
+    first_name: str = Field(..., min_length=1, max_length=100)
+    last_name: str = Field("", max_length=100)
+    password: str = Field(..., min_length=8, max_length=128, description="Initial password")
+    phone: str = Field("", max_length=20)
+    role_id: str | None = Field(None, description="Role to assign")
+    is_active: bool = Field(True, description="Whether account is active immediately")
+
+
 class UserResponse(BaseModel):
     """User data returned by the API."""
 

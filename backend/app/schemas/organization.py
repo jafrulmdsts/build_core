@@ -26,6 +26,7 @@ class OrganizationCreate(BaseModel):
     reg_number: str = Field("", max_length=100)
     currency_code: str = Field("BDT", max_length=3)
     timezone: str = Field("Asia/Dhaka", max_length=50)
+    subscription_plan_id: str | None = Field(None, description="Subscription plan to assign")
 
 
 class OrganizationUpdate(BaseModel):
@@ -42,6 +43,7 @@ class OrganizationUpdate(BaseModel):
     is_active: bool | None = None
     currency_code: str | None = Field(None, max_length=3)
     timezone: str | None = Field(None, max_length=50)
+    subscription_plan_id: str | None = None
 
 
 # ---------------------------------------------------------------------------
