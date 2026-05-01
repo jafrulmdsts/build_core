@@ -31,13 +31,12 @@ async def list_organizations_endpoint(
 ):
     """List all organizations (super admin only). Supports pagination."""
     try:
-        offset = compute_offset(pagination)
-        orgs, total = await list_organizations(db, offset=offset, limit=pagination.per_page)
+        result = await list_organizations(db, page=pagination.page, per_page=pagination.per_page)
         return paginated_response(
-            data=orgs,
+            data=result["items"],
             page=pagination.page,
             per_page=pagination.per_page,
-            total=total,
+            total=result["total"],
             message="Organizations retrieved",
         )
     except BuildCoreError as exc:

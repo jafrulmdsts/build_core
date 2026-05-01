@@ -20,6 +20,10 @@ from app.database import get_db
 # Auth helpers
 # ---------------------------------------------------------------------------
 
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
+bearer_scheme = HTTPBearer(auto_error=False)
+
 def _extract_bearer_token(authorization: str | None) -> str:
     """Pull the raw token from an Authorization header.
 
@@ -41,6 +45,7 @@ def _extract_bearer_token(authorization: str | None) -> str:
 
 
 async def get_current_user(
+    token_auth: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     authorization: str | None = Header(default=None),
 ) -> dict[str, Any]:
     """FastAPI dependency – verify JWT and return payload claims.
@@ -60,7 +65,11 @@ async def get_current_user(
     Raises:
         UnauthorizedError: If the token is invalid or expired.
     """
-    token = _extract_bearer_token(authorization)
+    if token_auth:
+        token = token_auth.credentials
+    else:
+        token = _extract_bearer_token(authorization)
+    
     payload = verify_token(token)
 
     user_id = payload.get("sub")
