@@ -1,16 +1,20 @@
 import { createI18n } from 'vue-i18n';
-import { auth_en, auth_bn } from '@/features/auth/auth_lan';
+import { auth_en, auth_bn, common_en, common_bn } from '@/features/auth/auth_lan';
+
 const message = {
     en: {
-        ...auth_en
+        ...auth_en,
+        ...common_en,
     },
     bn: {
-        auth_bn
+        ...auth_bn,
+        ...common_bn,
     }
 };
 
-const i18n = createI18n( {
-    locale: 'en',
+const i18n = createI18n({
+    legacy: false,
+    locale: 'bn',
     fallbackLocale: 'en',
     messages: message
 });
