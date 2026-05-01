@@ -66,6 +66,13 @@ from app.routes.roles import router as role_router
 from app.routes.sdui import router as sdui_router
 from app.routes.subscriptions import router as sub_router
 from app.routes.audit_logs import router as audit_router
+from app.routes.locations import router as location_router
+from app.routes.employees import router as employee_router
+from app.routes.contractors import router as contractor_router
+from app.routes.projects import router as project_router
+from app.routes.expenses import router as expense_router
+from app.routes.files import router as files_router
+from app.routes.currencies import router as currency_router
 
 app.include_router(auth_router, prefix=settings.API_PREFIX)
 app.include_router(org_router, prefix=settings.API_PREFIX)
@@ -74,3 +81,10 @@ app.include_router(role_router, prefix=settings.API_PREFIX)
 app.include_router(sdui_router, prefix=settings.API_PREFIX)
 app.include_router(sub_router, prefix=settings.API_PREFIX)
 app.include_router(audit_router, prefix=settings.API_PREFIX)
+app.include_router(location_router, prefix=settings.API_PREFIX)
+app.include_router(employee_router, prefix=settings.API_PREFIX)
+app.include_router(contractor_router, prefix=settings.API_PREFIX)
+app.include_router(project_router, prefix=settings.API_PREFIX)
+app.include_router(expense_router, prefix=settings.API_PREFIX)
+app.include_router(files_router, prefix=settings.API_PREFIX)
+app.include_router(currency_router, prefix=settings.API_PREFIX)
