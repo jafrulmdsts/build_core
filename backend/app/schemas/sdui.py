@@ -4,7 +4,7 @@ SDUI Menu Pydantic schema for server-driven UI navigation.
 
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class SduiMenuResponse(BaseModel):
