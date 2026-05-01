@@ -67,6 +67,22 @@ const router = createRouter({
           component: () => import('@/views/ExpensesView.vue'),
         },
         {
+          path: 'audit-logs',
+          name: 'audit-logs',
+          component: () => import('@/views/AuditLogsView.vue'),
+        },
+        {
+          path: 'subscriptions',
+          name: 'subscriptions',
+          component: () => import('@/views/SubscriptionPlansView.vue'),
+        },
+        {
+          path: 'currencies',
+          name: 'currencies',
+          component: () => import('@/views/CurrenciesView.vue'),
+          meta: { superAdminOnly: true },
+        },
+        {
           path: 'settings',
           name: 'settings',
           component: () => import('@/views/SettingsView.vue'),

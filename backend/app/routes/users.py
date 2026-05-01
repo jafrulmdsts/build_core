@@ -17,6 +17,7 @@ from app.services.user.service import (
     list_users,
     update_user_profile,
     deactivate_user,
+    activate_user,
     delete_user,
 )
 
@@ -100,5 +101,19 @@ async def deactivate_user_endpoint(
     try:
         user = await deactivate_user(db, user_id)
         return success_response(data=user, message="User deactivated")
+    except BuildCoreError as exc:
+        return error_response(exc)
+
+
+@router.patch("/{user_id}/activate")
+async def activate_user_endpoint(
+    user_id: str,
+    db=Depends(get_db_session),
+    _current_user: dict = Depends(require_tenant),
+):
+    """Activate a user account. Requires tenant context."""
+    try:
+        user = await activate_user(db, user_id)
+        return success_response(data=user, message="User activated")
     except BuildCoreError as exc:
         return error_response(exc)

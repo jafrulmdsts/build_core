@@ -93,7 +93,10 @@ async function changePassword() {
   }
   passwordSaving.value = true;
   try {
-    // Future endpoint: POST /auth/change-password
+    await api.post('/auth/change-password', {
+      current_password: passwordForm.current_password,
+      new_password: passwordForm.new_password,
+    });
     passwordSuccess.value = true;
     passwordForm.current_password = '';
     passwordForm.new_password = '';

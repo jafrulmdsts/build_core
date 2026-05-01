@@ -14,8 +14,9 @@ from app.schemas.auth import (
     RegisterRequest,
     InviteUserRequest,
     RefreshTokenRequest,
+    ChangePasswordRequest,
 )
-from app.services.auth.service import login, register, refresh_token, invite_user, logout
+from app.services.auth.service import login, register, refresh_token, invite_user, logout, change_password
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -120,5 +121,27 @@ async def logout_endpoint(
     try:
         await logout(db, current_user.get("sub"))
         return success_response(message="Logged out successfully")
+    except BuildCoreError as exc:
+        return error_response(exc)
+
+
+@router.post("/change-password")
+async def change_password_endpoint(
+    body: ChangePasswordRequest,
+    db=Depends(get_db_session),
+    current_user: dict = Depends(get_current_user),
+):
+    """Change the authenticated user's password.
+
+    Requires current password verification.
+    """
+    try:
+        await change_password(
+            db,
+            user_id=current_user.get("sub"),
+            current_password=body.current_password,
+            new_password=body.new_password,
+        )
+        return success_response(message="Password changed successfully")
     except BuildCoreError as exc:
         return error_response(exc)

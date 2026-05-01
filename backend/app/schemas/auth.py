@@ -50,6 +50,13 @@ class InviteUserRequest(BaseModel):
     phone: str = Field("", max_length=20)
 
 
+class ChangePasswordRequest(BaseModel):
+    """Payload for changing a user's password."""
+
+    current_password: str = Field(..., min_length=6, description="Current password")
+    new_password: str = Field(..., min_length=8, max_length=128, description="New password")
+
+
 class RefreshTokenRequest(BaseModel):
     """Payload for refreshing an access token."""
 

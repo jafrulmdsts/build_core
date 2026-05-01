@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { useAuthStore } from '@/features/auth/store';
+import api from '@/lib/api';
 import {
   FolderKanban,
   UserCheck,
@@ -13,103 +16,113 @@ import {
   CheckCircle2,
   AlertCircle,
   UserPlus,
+  FileText,
+  Building2,
+  Shield,
 } from '@lucide/vue';
 
-const stats = ref([
+const { locale } = useI18n();
+const isBangla = computed(() => locale.value === 'bn');
+const authStore = useAuthStore();
+
+const loading = ref(true);
+
+// Real stats from API
+const statsData = ref({ projects: 0, employees: 0, contractors: 0, expenses: 0 });
+const recentActivities = ref<any[]>([]);
+
+const stats = computed(() => [
   {
-    label: 'Total Projects',
-    value: '12',
-    trend: '+3 this month',
+    label: isBangla.value ? 'মোট প্রকল্প' : 'Total Projects',
+    value: String(statsData.value.projects),
+    trend: isBangla.value ? 'সক্রিয় প্রকল্প' : 'Active projects',
     trendUp: true,
     icon: FolderKanban,
-    color: 'bg-blue-500',
     bgColor: 'bg-blue-50',
     textColor: 'text-blue-600',
   },
   {
-    label: 'Active Employees',
-    value: '48',
-    trend: '+5 this month',
+    label: isBangla.value ? 'সক্রিয় কর্মী' : 'Active Employees',
+    value: String(statsData.value.employees),
+    trend: isBangla.value ? 'মোট কর্মী' : 'Total employees',
     trendUp: true,
     icon: UserCheck,
-    color: 'bg-emerald-500',
     bgColor: 'bg-emerald-50',
     textColor: 'text-emerald-600',
   },
   {
-    label: 'Contractors',
-    value: '15',
-    trend: '+2 this month',
+    label: isBangla.value ? 'চুক্তিকার' : 'Contractors',
+    value: String(statsData.value.contractors),
+    trend: isBangla.value ? 'নিবন্ধিত চুক্তিকার' : 'Registered contractors',
     trendUp: true,
     icon: Wrench,
-    color: 'bg-amber-500',
     bgColor: 'bg-amber-50',
     textColor: 'text-amber-600',
   },
   {
-    label: 'Monthly Expenses',
-    value: '৳2.4L',
-    trend: '-12% vs last',
+    label: isBangla.value ? 'মাসিক ব্যয়' : 'Monthly Expenses',
+    value: `৳${statsData.value.expenses.toLocaleString()}`,
+    trend: isBangla.value ? 'এই মাসে' : 'This month',
     trendUp: false,
     icon: Receipt,
-    color: 'bg-purple-500',
     bgColor: 'bg-purple-50',
     textColor: 'text-purple-600',
   },
 ]);
 
-const recentActivities = ref([
-  {
-    id: 1,
-    text: 'New project "Dhaka Tower Phase 2" was created',
-    time: '2 hours ago',
-    type: 'success' as const,
-    icon: CheckCircle2,
-  },
-  {
-    id: 2,
-    text: 'Employee Karim Hossain joined the organization',
-    time: '5 hours ago',
-    type: 'success' as const,
-    icon: UserPlus,
-  },
-  {
-    id: 3,
-    text: 'Expense report for March submitted for approval',
-    time: '1 day ago',
-    type: 'pending' as const,
-    icon: Clock,
-  },
-  {
-    id: 4,
-    text: 'Contractor payment deadline approaching',
-    time: '1 day ago',
-    type: 'warning' as const,
-    icon: AlertCircle,
-  },
-  {
-    id: 5,
-    text: 'Role "Site Manager" permissions updated',
-    time: '2 days ago',
-    type: 'success' as const,
-    icon: CheckCircle2,
-  },
-]);
+const quickActions = computed(() => {
+  const actions = [
+    { label: isBangla.value ? 'নতুন প্রকল্প' : 'New Project', icon: Plus, path: '/projects' },
+    { label: isBangla.value ? 'কর্মী যোগ করুন' : 'Add Employee', icon: UserPlus, path: '/employees' },
+    { label: isBangla.value ? 'ব্যয় দেখুন' : 'View Expenses', icon: TrendingUp, path: '/expenses' },
+    { label: isBangla.value ? 'ভূমিকা পরিচালনা' : 'Manage Roles', icon: Shield, path: '/roles' },
+  ];
+  return actions;
+});
 
-const quickActions = ref([
-  { label: 'New Project', icon: Plus, path: '/projects' },
-  { label: 'Add Employee', icon: UserPlus, path: '/employees' },
-  { label: 'View Reports', icon: TrendingUp, path: '/expenses' },
-  { label: 'Manage Roles', icon: ArrowRight, path: '/roles' },
-]);
+async function fetchDashboardData() {
+  loading.value = true;
+  try {
+    const [projectsRes, employeesRes, contractorsRes, expensesRes, auditRes] = await Promise.allSettled([
+      api.get('/projects', { params: { page: 1, per_page: 1 } }),
+      api.get('/employees', { params: { page: 1, per_page: 1 } }),
+      api.get('/contractors', { params: { page: 1, per_page: 1 } }),
+      api.get('/expenses', { params: { page: 1, per_page: 1 } }),
+      api.get('/audit-logs', { params: { page: 1, per_page: 5 } }),
+    ]);
+
+    statsData.value.projects = projectsRes.status === 'fulfilled' ? (projectsRes.value.data.meta?.total || 0) : 0;
+    statsData.value.employees = employeesRes.status === 'fulfilled' ? (employeesRes.value.data.meta?.total || 0) : 0;
+    statsData.value.contractors = contractorsRes.status === 'fulfilled' ? (contractorsRes.value.data.meta?.total || 0) : 0;
+    statsData.value.expenses = expensesRes.status === 'fulfilled' ? (expensesRes.value.data.meta?.total || 0) : 0;
+
+    if (auditRes.status === 'fulfilled') {
+      const logs = auditRes.value.data.data || [];
+      recentActivities.value = logs.map((log: any) => {
+        const actionBase = log.action?.split('.')[0] || 'update';
+        const icons: Record<string, any> = { create: CheckCircle2, update: Shield, delete: AlertCircle, login: UserPlus, invite: UserPlus };
+        const types: Record<string, string> = { create: 'success', update: 'success', delete: 'warning', login: 'success', invite: 'success', deactivate: 'warning', activate: 'success' };
+        return {
+          id: log.id,
+          text: `${log.user_email} — ${log.action} on ${log.entity_type}`,
+          time: new Date(log.created_at).toLocaleString(isBangla.value ? 'bn-BD' : 'en-US', { dateStyle: 'short', timeStyle: 'short' }),
+          type: types[actionBase] || 'success',
+          icon: icons[actionBase] || FileText,
+        };
+      });
+    }
+  } catch {} finally { loading.value = false; }
+}
+
+onMounted(fetchDashboardData);
 </script>
 
 <template>
   <div class="space-y-6">
     <!-- Welcome Header -->
     <div>
-      <h2 class="text-2xl font-bold text-slate-900">Welcome back!</h2>
-      <p class="mt-1 text-sm text-slate-500">Here's what's happening with your organization today.</p>
+      <h2 class="text-2xl font-bold text-slate-900">{{ isBangla ? 'স্বাগতম!' : 'Welcome back!' }} {{ authStore.getFullName() }}</h2>
+      <p class="mt-1 text-sm text-slate-500">{{ isBangla.value ? 'আজকে আপনার সংস্থার কার্যক্রম' : "Here's what's happening with your organization today." }}</p>
     </div>
 
     <!-- Stats Cards Grid -->
@@ -151,10 +164,10 @@ const quickActions = ref([
       <!-- Recent Activity -->
       <div class="lg:col-span-2 rounded-xl bg-white border border-slate-200/80 shadow-sm">
         <div class="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-100">
-          <h3 class="text-base font-semibold text-slate-900">Recent Activity</h3>
-          <button class="text-sm font-medium text-emerald-600 hover:text-emerald-700 transition-colors cursor-pointer">
-            View all
-          </button>
+          <h3 class="text-base font-semibold text-slate-900">{{ isBangla ? 'সাম্প্রতিক কার্যক্রম' : 'Recent Activity' }}</h3>
+          <router-link to="/audit-logs" class="text-sm font-medium text-emerald-600 hover:text-emerald-700 transition-colors">
+            {{ isBangla ? 'সব দেখুন' : 'View all' }}
+          </router-link>
         </div>
         <div class="divide-y divide-slate-100">
           <div
@@ -187,7 +200,7 @@ const quickActions = ref([
       <!-- Quick Actions -->
       <div class="rounded-xl bg-white border border-slate-200/80 shadow-sm">
         <div class="px-5 sm:px-6 py-4 border-b border-slate-100">
-          <h3 class="text-base font-semibold text-slate-900">Quick Actions</h3>
+          <h3 class="text-base font-semibold text-slate-900">{{ isBangla ? 'দ্রুত কার্য' : 'Quick Actions' }}</h3>
         </div>
         <div class="p-4 sm:p-5 space-y-2">
           <router-link

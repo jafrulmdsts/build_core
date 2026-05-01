@@ -345,3 +345,32 @@ async def logout(db: AsyncSession, user_id: str) -> None:
     # Placeholder — client discards tokens.
     # Future: add token to blacklist store (Redis, DB table, etc.)
     pass
+
+
+async def change_password(
+    db: AsyncSession,
+    user_id: str,
+    current_password: str,
+    new_password: str,
+) -> None:
+    """Change a user's password after verifying the current one.
+
+    Args:
+        db: Async database session.
+        user_id: ID of the user changing their password.
+        current_password: The user's current plaintext password.
+        new_password: The desired new plaintext password.
+
+    Raises:
+        NotFoundError: If user not found.
+        ValidationError: If current password is incorrect.
+    """
+    user = await get_user_by_id(db, user_id)
+    if user is None:
+        raise NotFoundError(message="User not found")
+
+    if not verify_password(current_password, user.password_hash):
+        raise ValidationError(message="Current password is incorrect")
+
+    password_hash = get_password_hash(new_password)
+    await update_user(db, user.id, password_hash=password_hash)

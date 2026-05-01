@@ -126,6 +126,25 @@ async def deactivate_user(db, user_id: str) -> UserResponse:
     return UserResponse.model_validate(updated)
 
 
+async def activate_user(db, user_id: str) -> UserResponse:
+    """Activate a user (set is_active = True).
+
+    Args:
+        db: Async database session.
+        user_id: UUID string of the user.
+
+    Returns:
+        UserResponse schema.
+
+    Raises:
+        NotFoundError: If the user does not exist.
+    """
+    updated = await crud.update_user(db, user_id, is_active=True)
+    if updated is None:
+        raise NotFoundError(message="User not found")
+    return UserResponse.model_validate(updated)
+
+
 async def delete_user(db, user_id: str) -> None:
     """Soft-delete a user.
 

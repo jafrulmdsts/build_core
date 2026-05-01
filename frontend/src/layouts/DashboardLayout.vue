@@ -19,6 +19,9 @@ import {
   Globe,
   LogOut,
   ChevronDown,
+  FileText,
+  CreditCard,
+  Coins,
 } from '@lucide/vue';
 
 const route = useRoute();
@@ -73,12 +76,14 @@ interface MenuItem {
 const menuItems = computed<MenuItem[]>(() => {
   const items: MenuItem[] = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    { name: 'Users', path: '/users', icon: Users },
-    { name: 'Roles', path: '/roles', icon: Shield },
     { name: 'Projects', path: '/projects', icon: HardHat },
     { name: 'Employees', path: '/employees', icon: UserCheck },
     { name: 'Contractors', path: '/contractors', icon: Wrench },
     { name: 'Expenses', path: '/expenses', icon: Receipt },
+    { name: 'Users', path: '/users', icon: Users },
+    { name: 'Roles', path: '/roles', icon: Shield },
+    { name: 'Audit Logs', path: '/audit-logs', icon: FileText },
+    { name: 'Subscriptions', path: '/subscriptions', icon: CreditCard },
     { name: 'Settings', path: '/settings', icon: Settings },
   ];
 
@@ -87,6 +92,12 @@ const menuItems = computed<MenuItem[]>(() => {
       name: 'Organizations',
       path: '/organizations',
       icon: Building2,
+      superAdminOnly: true,
+    });
+    items.push({
+      name: 'Currencies',
+      path: '/currencies',
+      icon: Coins,
       superAdminOnly: true,
     });
   }
