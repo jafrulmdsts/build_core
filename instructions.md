@@ -91,17 +91,16 @@
 ## Development Environment — SSH & Git Push
 
 ### SSH Key Info (DO NOT LOSE)
-This environment has **no native `ssh` binary**. Git push uses a Python `asyncssh` wrapper.
+This environment has **no native `ssh` binary**. Git push uses a Python `paramiko` wrapper.
 
-- **Private Key**: `/home/z/.ssh/id_ed25519`
-- **Public Key**: `/home/z/.ssh/id_ed25519.pub`
+- **Private Key**: `/home/z/.ssh/id_rsa_buildcore`
 - **SSH Wrapper Script**: `/home/z/.ssh/ssh_wrapper.py`
-- **Key Type**: ED25519
+- **Key Type**: RSA (4096-bit)
 - **Comment**: `buildcore@dev.bot`
 
 ### Public Key (already added to GitHub):
 ```
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICS7srfYlTaA83VVeUu1SRTX9DeSn0oWOmzZiUeUz4jm buildcore@dev.bot
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCXs8tuXJBjr968sRCnvWDqWYiibszaIGeTz2n/0dk3bdJBHkYUH1gPCvYol0tBGbh3X8VHnnRQukIt4iu7DR+qpmyXJIF4jy1097NYbREtnRuRsqqVaTIPYGgGfuKjwqc2437EbdjqcxXe8fIRTGKo/EN3KMaIsL+jBvxSnSmUmGYA5J3xZJXh+82fv1p0lGulHHv0gkk3/Bneqyi2x5z4P+JoC9jsu/SoOz2qDkbe1b8CDeMzJWAdC8jkjbL2ILAGDJY+DwudtfRryHe94u75LoqFIVvBPRJo7u8HiAxKSuvPjhRbKVZcEVG94dLt8ChJmveSI3H8Pq6MGJEVxIcyq3+D7VFXwD3DTZNIvhaTWnYWZfwLa9X72IC9Ptkwim4O78IWmAYzwJET5e/lK6EwvcHeEYVkbbPR2Xf/HhBIlT+FApPuIyFOIh2xbNo/4CP4hBrDShfD4K0GuBNkfcHVU9rn84iY4GO+QIx6KhWM2J0IzTZGkTmUWbOmQHwTY79silBgNi+ZhtaPPS08+XA1UwTB6X540ORwt7zJO8ohhSwFfPj490SgmZR+EhkoFuBTlqBibcubWCYutrT6aa+5Lp/tObpaGXcUgbKy3eBEnF57MMNMde5udSVyOxALQdwlYGqvcQksk2IAVYnUgfitXCEghCRYjRBElmc33jmO2w==
 ```
 
 ### How to Push:
@@ -109,8 +108,20 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICS7srfYlTaA83VVeUu1SRTX9DeSn0oWOmzZiUeUz4jm
 GIT_SSH_COMMAND="python3 /home/z/.ssh/ssh_wrapper.py" git -C /home/z/build_core push origin main
 ```
 
+### How to Pull:
+```bash
+GIT_SSH_COMMAND="python3 /home/z/.ssh/ssh_wrapper.py" git -C /home/z/build_core pull origin main
+```
+
+### Wrapper Dependencies:
+- `paramiko` — required for SSH connections
+- Install: `python3 -m pip install paramiko`
+
 ### If Key Stops Working:
-1. Generate new key: `python3 -c "import asyncio,asyncssh,os; ... (see ssh_wrapper.py)"`
+1. Generate new RSA key:
+   ```bash
+   python3 -c "import paramiko; k=paramiko.RSAKey.generate(4096); k.write_private_key_file('/home/z/.ssh/id_rsa_buildcore'); print(k.get_name()+' '+k.get_base64())"
+   ```
 2. Add new public key to GitHub → Settings → Deploy Keys → Allow write access
 3. Update instructions.md with new public key
 4. **NEVER use HTTPS push** — no credential helper available in this environment
