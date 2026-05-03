@@ -4,10 +4,11 @@ import api from '@/lib/api';
 import { useAuthStore } from '@/features/auth/store';
 import {
   Shield, Plus, Search, Edit, Trash2, X, Loader2,
-  ChevronLeft, ChevronRight, ShieldCheck, Lock,
+  ChevronLeft, ChevronRight, ShieldCheck, Lock, Building2,
 } from '@lucide/vue';
 
 const authStore = useAuthStore();
+const isSuperAdminNoOrg = computed(() => authStore.isSuperAdmin && !authStore.hasOrganization);
 
 interface RoleItem {
   id: string; name: string; description: string;
@@ -164,8 +165,8 @@ const pageNumbers = computed(() => {
 const inputCls = 'block w-full rounded-lg border border-slate-300 bg-white py-2.5 px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20';
 const inputIconCls = inputCls.replace(' px-3', ' pl-10 pr-3');
 
-watch(currentPage, () => fetchRoles());
-onMounted(() => fetchRoles());
+watch(currentPage, () => { if (!isSuperAdminNoOrg.value) fetchRoles(); });
+onMounted(() => { if (!isSuperAdminNoOrg.value) fetchRoles(); });
 </script>
 
 <template>
@@ -176,9 +177,19 @@ onMounted(() => fetchRoles());
         <h2 class="text-2xl font-bold text-slate-900">ভূমিকা / Roles</h2>
         <p class="mt-1 text-sm text-slate-500">Define roles and permissions for your organization.</p>
       </div>
-      <button @click="openCreateModal" class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 cursor-pointer">
+      <button v-if="!isSuperAdminNoOrg" @click="openCreateModal" class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 cursor-pointer">
         <Plus :size="18" /> নতুন ভূমিকা / Create Role
       </button>
+    </div>
+
+    <!-- SuperAdmin No Org Notice -->
+    <div v-if="isSuperAdminNoOrg" class="rounded-xl bg-amber-50 border border-amber-200 p-6 text-center">
+      <Shield :size="40" class="text-amber-400 mx-auto mb-3" />
+      <h3 class="text-lg font-semibold text-slate-900">No Organization Context</h3>
+      <p class="mt-2 text-sm text-slate-500 max-w-md mx-auto">
+        As a Super Admin, you need to select an organization first to manage roles.
+        Go to <router-link to="/organizations" class="text-emerald-600 font-medium hover:underline">Organizations</router-link> to create or manage one.
+      </p>
     </div>
 
     <!-- Error Banner -->

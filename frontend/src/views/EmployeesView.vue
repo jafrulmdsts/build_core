@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from 'vue';
 import api from '@/lib/api';
+import { useAuthStore } from '@/features/auth/store';
 import {
   UserCheck, UserPlus, Search, Edit, Trash2, X, Mail, Phone,
   ChevronLeft, ChevronRight, Loader2, Building2, Briefcase,
-  CalendarDays, Droplets, MapPin, AlertCircle, Users,
+  CalendarDays, Droplets, MapPin, AlertCircle, Users, Info,
 } from '@lucide/vue';
+
+const authStore = useAuthStore();
+const isSuperAdminNoOrg = computed(() => authStore.isSuperAdmin && !authStore.hasOrganization);
 
 interface Employee {
   id: string; employee_code: string; first_name: string; last_name: string;
@@ -153,8 +157,8 @@ const pageNumbers = computed(() => {
 const inputCls = 'block w-full rounded-lg border border-slate-300 bg-white py-2.5 px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20';
 const inputIconCls = inputCls.replace(' px-3', ' pl-10 pr-3');
 
-watch([currentPage, deptFilter], () => fetchEmployees());
-onMounted(() => fetchEmployees());
+watch([currentPage, deptFilter], () => { if (!isSuperAdminNoOrg.value) fetchEmployees(); });
+onMounted(() => { if (!isSuperAdminNoOrg.value) fetchEmployees(); });
 </script>
 
 <template>
@@ -165,9 +169,19 @@ onMounted(() => fetchEmployees());
         <h2 class="text-2xl font-bold text-slate-900">কর্মী / Employees</h2>
         <p class="mt-1 text-sm text-slate-500">Manage your organization's employee records.</p>
       </div>
-      <button @click="openCreateModal" class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 cursor-pointer">
+      <button v-if="!isSuperAdminNoOrg" @click="openCreateModal" class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 cursor-pointer">
         <UserPlus :size="18" /> নতুন কর্মী / Add Employee
       </button>
+    </div>
+
+    <!-- SuperAdmin No Org Notice -->
+    <div v-if="isSuperAdminNoOrg" class="rounded-xl bg-amber-50 border border-amber-200 p-6 text-center">
+      <Building2 :size="40" class="text-amber-400 mx-auto mb-3" />
+      <h3 class="text-lg font-semibold text-slate-900">No Organization Context</h3>
+      <p class="mt-2 text-sm text-slate-500 max-w-md mx-auto">
+        As a Super Admin, you need to select an organization first to manage employees.
+        Go to <router-link to="/organizations" class="text-emerald-600 font-medium hover:underline">Organizations</router-link> to create or manage one.
+      </p>
     </div>
 
     <!-- Error Banner -->

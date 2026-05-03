@@ -2,12 +2,14 @@
 BuildCore User Routes.
 
 Endpoints for viewing, updating, deactivating, and deleting users.
-Tenant-scoped list; super admin for hard delete.
+Tenant-scoped list; super admin for hard delete and cross-org queries.
 """
 
-from fastapi import APIRouter, Depends
+from typing import Optional
 
-from app.core.exceptions import BuildCoreError
+from fastapi import APIRouter, Depends, Query
+
+from app.core.exceptions import BuildCoreError, ForbiddenError
 from app.core.pagination import get_pagination_params, compute_offset
 from app.core.responses import error_response, paginated_response, success_response
 from app.core.dependencies import get_current_user, require_super_admin, require_tenant, get_db_session
@@ -25,18 +27,43 @@ from app.services.auth.crud import get_user_by_email
 router = APIRouter(prefix="/users", tags=["Users"])
 
 
+def _resolve_org_id(
+    current_user: dict,
+    query_org_id: Optional[str] = None,
+) -> str:
+    """Determine organization_id from JWT or query param (superadmin only).
+
+    Regular users always use their JWT organization_id.
+    Superadmins can override via ?organization_id= query param.
+    """
+    jwt_org = current_user.get("organization_id")
+    is_sa = current_user.get("is_super_admin")
+
+    if is_sa and query_org_id:
+        return query_org_id
+
+    if jwt_org:
+        return jwt_org
+
+    raise ForbiddenError(
+        message="No organization context found",
+        details={"hint": "Provide organization_id query param or use a tenant user"},
+    )
+
+
 @router.get("/")
 async def list_users_endpoint(
     db=Depends(get_db_session),
     pagination=Depends(get_pagination_params),
-    current_user: dict = Depends(require_tenant),
+    current_user: dict = Depends(get_current_user),
+    organization_id: Optional[str] = Query(default=None, description="Org ID (superadmin only)"),
 ):
-    """List users within the authenticated organization. Supports pagination."""
+    """List users within an organization. Super admin can query any org via ?organization_id=."""
     try:
-        organization_id = current_user.get("organization_id")
+        org_id = _resolve_org_id(current_user, organization_id)
         offset = compute_offset(pagination)
         users, total = await list_users(
-            db, organization_id=organization_id, offset=offset, limit=pagination.per_page,
+            db, organization_id=org_id, offset=offset, limit=pagination.per_page,
         )
         return paginated_response(
             data=users,
