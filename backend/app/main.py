@@ -5,14 +5,20 @@ Creates the FastAPI application, registers middleware, exception handlers,
 and all route modules.
 """
 
+import logging
+
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from pydantic import ValidationError
 
 from app.config import get_settings
 from app.core.exceptions import BuildCoreError
 from app.core.middleware import TenantMiddleware
 from app.core.responses import error_response
+
+logger = logging.getLogger("buildcore")
 
 settings = get_settings()
 
@@ -43,6 +49,61 @@ async def buildcore_exception_handler(request: Request, exc: BuildCoreError):
     return JSONResponse(
         status_code=exc.status_code,
         content=error_response(exc),
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def request_validation_handler(request: Request, exc: RequestValidationError):
+    """Catch FastAPI request-body / query-parameter validation errors."""
+    return JSONResponse(
+        status_code=422,
+        content={
+            "success": False,
+            "error": {
+                "code": "VALIDATION_ERROR",
+                "message": "Validation failed",
+                "details": [
+                    {"field": err["loc"][-1], "message": err["msg"]}
+                    for err in exc.errors()
+                ],
+            },
+        },
+    )
+
+
+@app.exception_handler(ValidationError)
+async def pydantic_validation_handler(request: Request, exc: ValidationError):
+    """Catch Pydantic model_validate / schema-level validation errors."""
+    return JSONResponse(
+        status_code=422,
+        content={
+            "success": False,
+            "error": {
+                "code": "VALIDATION_ERROR",
+                "message": "Validation failed",
+                "details": [
+                    {"field": err["loc"][-1], "message": err["msg"]}
+                    for err in exc.errors()
+                ],
+            },
+        },
+    )
+
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    """Catch-all for any unhandled exceptions — prevents raw 500s leaking."""
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "success": False,
+            "error": {
+                "code": "INTERNAL_ERROR",
+                "message": "An unexpected error occurred",
+                "details": [],
+            },
+        },
     )
 
 # ---------------------------------------------------------------------------

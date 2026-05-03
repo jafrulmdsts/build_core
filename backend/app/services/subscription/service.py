@@ -31,10 +31,29 @@ def _parse_features(features_text: str | None) -> list[str]:
 
 
 def _to_response(plan) -> SubscriptionPlanResponse:
-    """Convert a SubscriptionPlan ORM model to a response schema."""
-    data = SubscriptionPlanResponse.model_validate(plan)
-    data.features = _parse_features(plan.features)
-    return data
+    """Convert a SubscriptionPlan ORM model to a response schema.
+
+    Builds the response manually instead of using model_validate because
+    the ORM ``features`` column stores a JSON string while the schema
+    expects ``list[str]``.  model_validate would raise a ValidationError
+    on the type mismatch *before* we get a chance to parse it.
+    """
+    return SubscriptionPlanResponse(
+        id=plan.id,
+        name=plan.name,
+        slug=plan.slug,
+        description=plan.description,
+        price_monthly=plan.price_monthly,
+        price_yearly=plan.price_yearly,
+        max_users=plan.max_users,
+        max_projects=plan.max_projects,
+        max_storage_mb=plan.max_storage_mb,
+        features=_parse_features(plan.features),
+        trial_days=plan.trial_days,
+        is_active=plan.is_active,
+        created_at=plan.created_at,
+        updated_at=plan.updated_at,
+    )
 
 
 async def get_plan(db: AsyncSession, plan_id: str) -> SubscriptionPlanResponse:
