@@ -125,6 +125,7 @@ async def create_organization(db, data: OrganizationCreate) -> OrganizationRespo
         max_users=max_users,
         max_projects=max_projects,
     )
+    await db.refresh(org)
     return OrganizationResponse.model_validate(org)
 
 
@@ -179,6 +180,7 @@ async def update_organization(
             update_data["max_projects"] = plan.max_projects
 
     updated = await crud.update_org(db, org_id, **update_data)
+    await db.refresh(updated)
     return OrganizationResponse.model_validate(updated)
 
 

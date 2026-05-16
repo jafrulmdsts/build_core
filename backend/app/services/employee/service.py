@@ -97,6 +97,7 @@ async def create_employee(
         bank_account=data.bank_account,
         created_by=created_by,
     )
+    await db.refresh(emp)
     return EmployeeResponse.model_validate(emp)
 
 
@@ -126,6 +127,7 @@ async def update_employee(
 
     update_data = data.model_dump(exclude_unset=True)
     updated = await crud.update_employee(db, emp_id, **update_data)
+    await db.refresh(updated)
     return EmployeeResponse.model_validate(updated)
 
 

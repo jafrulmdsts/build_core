@@ -55,6 +55,8 @@ async def buildcore_exception_handler(request: Request, exc: BuildCoreError):
 @app.exception_handler(RequestValidationError)
 async def request_validation_handler(request: Request, exc: RequestValidationError):
     """Catch FastAPI request-body / query-parameter validation errors."""
+    print(f"\n[REQUEST VALIDATION ERROR] URL: {request.url}")
+    print(f"Errors: {exc.errors()}\n")
     return JSONResponse(
         status_code=422,
         content={
@@ -74,6 +76,8 @@ async def request_validation_handler(request: Request, exc: RequestValidationErr
 @app.exception_handler(ValidationError)
 async def pydantic_validation_handler(request: Request, exc: ValidationError):
     """Catch Pydantic model_validate / schema-level validation errors."""
+    print(f"\n[PYDANTIC VALIDATION ERROR] URL: {request.url}")
+    print(f"Errors: {exc.errors()}\n")
     return JSONResponse(
         status_code=422,
         content={

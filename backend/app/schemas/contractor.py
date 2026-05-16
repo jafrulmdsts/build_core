@@ -34,12 +34,12 @@ class ContractorCreate(BaseModel):
     """Payload for creating a new contractor."""
 
     name: str = Field(..., min_length=1, max_length=200)
-    phone: str = Field("", max_length=20)
-    email: str = Field("", max_length=255)
+    phone: str | None = Field(None, max_length=20)
+    email: str | None = Field(None, max_length=255)
     address: str | None = None
-    nid_number: str = Field("", max_length=50)
-    trade_license: str = Field("", max_length=100)
-    bank_account: str = Field("", max_length=100)
+    nid_number: str | None = Field(None, max_length=50)
+    trade_license: str | None = Field(None, max_length=100)
+    bank_account: str | None = Field(None, max_length=100)
     notes: str | None = None
 
 
@@ -73,8 +73,8 @@ class ContractorResponse(BaseModel):
     notes: str | None = None
     is_active: bool = True
     created_by: str | None = None
-    created_at: datetime
-    updated_at: datetime
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 

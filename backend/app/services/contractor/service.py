@@ -79,6 +79,7 @@ async def create_contractor(
         notes=data.notes,
         created_by=created_by,
     )
+    await db.refresh(ctr)
     return ContractorResponse.model_validate(ctr)
 
 
@@ -99,6 +100,7 @@ async def update_contractor(
 
     update_data = data.model_dump(exclude_unset=True)
     updated = await crud.update_contractor(db, ctr_id, **update_data)
+    await db.refresh(updated)
     return ContractorResponse.model_validate(updated)
 
 
@@ -201,6 +203,7 @@ async def create_contract(
         notes=data.notes,
         created_by=created_by,
     )
+    await db.refresh(contract)
     return ContractResponse.model_validate(contract)
 
 
@@ -221,6 +224,7 @@ async def update_contract(
 
     update_data = data.model_dump(exclude_unset=True)
     updated = await crud.update_contract(db, contract_id, **update_data)
+    await db.refresh(updated)
     return ContractResponse.model_validate(updated)
 
 
@@ -291,6 +295,7 @@ async def create_payment(
         notes=data.notes,
         created_by=created_by,
     )
+    await db.refresh(payment)
     return PaymentResponse.model_validate(payment)
 
 
@@ -311,4 +316,5 @@ async def update_payment(
 
     update_data = data.model_dump(exclude_unset=True)
     updated = await crud.update_payment(db, payment_id, **update_data)
+    await db.refresh(updated)
     return PaymentResponse.model_validate(updated)

@@ -24,29 +24,11 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
-def _extract_bearer_token(authorization: str | None) -> str:
-    """Pull the raw token from an Authorization header.
 
-    Args:
-        authorization: Full Authorization header value.
-
-    Returns:
-        The JWT string without the "Bearer " prefix.
-
-    Raises:
-        UnauthorizedError: If header is missing or malformed.
-    """
-    if not authorization or not authorization.startswith("Bearer "):
-        raise UnauthorizedError(message="Missing or invalid Authorization header")
-    token = authorization.removeprefix("Bearer ").strip()
-    if not token:
-        raise UnauthorizedError(message="Empty bearer token")
-    return token
 
 
 async def get_current_user(
     token_auth: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
-    authorization: str | None = Header(default=None),
 ) -> dict[str, Any]:
     """FastAPI dependency – verify JWT and return payload claims.
 
@@ -57,19 +39,18 @@ async def get_current_user(
         - is_super_admin: bool
 
     Args:
-        authorization: Raw Authorization header from the request.
+        token_auth: Bearer token injected by FastAPI security scheme.
 
     Returns:
         Decoded JWT payload dict.
 
     Raises:
-        UnauthorizedError: If the token is invalid or expired.
+        UnauthorizedError: If the token is missing, invalid or expired.
     """
-    if token_auth:
-        token = token_auth.credentials
-    else:
-        token = _extract_bearer_token(authorization)
+    if not token_auth:
+        raise UnauthorizedError(message="Missing or invalid Authorization header")
     
+    token = token_auth.credentials
     payload = verify_token(token)
 
     user_id = payload.get("sub")
@@ -121,10 +102,11 @@ async def require_tenant(
     ctx_org = get_tenant_id()
 
     tenant = jwt_org or ctx_org
-    if not tenant:
+    # Super admins are exempt from strict tenant requirement at this layer
+    if not tenant and not current_user.get("is_super_admin"):
         raise TenantError(
             message="No organization context found",
-            details={"hint": "Ensure your JWT contains organization_id"},
+            details={"hint": "Ensure your JWT contains organization_id or provide X-Organization-Id header"},
         )
 
     return current_user

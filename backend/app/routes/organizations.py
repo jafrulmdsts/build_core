@@ -63,7 +63,12 @@ async def get_organization_endpoint(
     db=Depends(get_db_session),
     _current_user: dict = Depends(require_tenant),
 ):
-    """Retrieve a single organization by ID. Requires tenant context."""
+    """Retrieve a single organization by ID. Requires tenant context or super admin."""
+    # Auth check: Super Admin or member of this org
+    if not _current_user.get("is_super_admin") and _current_user.get("organization_id") != org_id:
+        from app.core.exceptions import ForbiddenError
+        raise ForbiddenError(message="You do not have access to this organization")
+
     try:
         org = await get_organization(db, org_id)
         return success_response(data=org, message="Organization retrieved")
@@ -78,7 +83,12 @@ async def update_organization_endpoint(
     db=Depends(get_db_session),
     _current_user: dict = Depends(require_tenant),
 ):
-    """Update an existing organization. Requires tenant context."""
+    """Update an existing organization. Requires tenant context or super admin."""
+    # Auth check: Super Admin or member of this org
+    if not _current_user.get("is_super_admin") and _current_user.get("organization_id") != org_id:
+        from app.core.exceptions import ForbiddenError
+        raise ForbiddenError(message="You do not have access to this organization")
+
     try:
         org = await update_organization(db, org_id, body)
         return success_response(data=org, message="Organization updated")

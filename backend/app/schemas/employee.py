@@ -24,18 +24,18 @@ class EmployeeCreate(BaseModel):
 
     first_name: str = Field(..., min_length=1, max_length=100)
     last_name: str = Field("", max_length=100)
-    phone: str = Field("", max_length=20)
-    email: str = Field("", max_length=255)
-    designation: str = Field("", max_length=100)
+    phone: str | None = Field(None, max_length=20)
+    email: str | None = Field(None, max_length=255)
+    designation: str | None = Field(None, max_length=100)
     employee_type: str = Field("field", max_length=30)
-    department: str = Field("", max_length=100)
+    department: str | None = Field(None, max_length=100)
     salary: Decimal | None = None
     currency_code: str = Field("BDT", max_length=3)
     joining_date: date | None = None
-    nid_number: str = Field("", max_length=50)
+    nid_number: str | None = Field(None, max_length=50)
     address: str | None = None
-    emergency_contact: str = Field("", max_length=200)
-    bank_account: str = Field("", max_length=100)
+    emergency_contact: str | None = Field(None, max_length=200)
+    bank_account: str | None = Field(None, max_length=100)
 
 
 class EmployeeUpdate(BaseModel):
@@ -77,7 +77,7 @@ class EmployeeResponse(BaseModel):
     employee_type: str | None = None
     department: str | None = None
     salary: Decimal | None = None
-    currency_code: str = "BDT"
+    currency_code: str | None = "BDT"
     joining_date: date | None = None
     nid_number: str | None = None
     address: str | None = None
@@ -85,7 +85,7 @@ class EmployeeResponse(BaseModel):
     bank_account: str | None = None
     is_active: bool = True
     created_by: str | None = None
-    created_at: datetime
-    updated_at: datetime
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
     model_config = {"from_attributes": True}

@@ -3,7 +3,7 @@
 ## Strict Rules
 
 ### 1. File Size Limit
-- Maximum **500 lines** per file. Split into smaller modules if needed.
+- Maximum **200 lines** per file. Split into smaller modules if needed.
 
 ### 2. No Foreign Keys
 - **No `ForeignKey()` or `relationship()`** in SQLAlchemy models.
